@@ -1,53 +1,28 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>벽돌깨기 게임</title>
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <main class="page">
-      <header class="header">
-        <h1>벽돌깨기</h1>
-      </header>
-
-      <section class="game-section">
-        <div class="hud">
-          <div class="hud__item"><span>점수</span><strong id="scoreValue">0</strong></div>
-          <div class="hud__item"><span>목숨</span><strong id="livesValue">3</strong></div>
-          <div class="hud__item"><span>레벨</span><strong id="levelValue">1</strong></div>
-          <div class="hud__spacer"></div>
-          <div class="hud__item">
-            <button id="pauseBtn" class="btn">일시정지</button>
-          </div>
-          <div class="hud__item">
-            <button id="restartBtn" class="btn btn--ghost">재시작</button>
-          </div>
-          <div class="hud__item">
-            <button id="soundBtn" class="btn btn--ghost">소리: 켬</button>
-          </div>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>벽돌깨기 게임</h1>
+        <div class="game-info">
+            <div id="score">점수: 0</div>
+            <div id="lives">생명: 3</div>
         </div>
-
-        <div class="game-container">
-          <canvas id="gameCanvas" width="800" height="600" aria-label="벽돌깨기 게임 캔버스"></canvas>
-          <div id="overlay" class="overlay hidden">
-            <div class="overlay__panel" id="overlayPanel"></div>
-            <div class="overlay__actions">
-              <button id="overlayPrimaryBtn" class="btn">시작</button>
-              <button id="overlaySecondaryBtn" class="btn btn--ghost">재시작</button>
-            </div>
-          </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="game-controls">
+            <button id="startBtn">게임 시작</button>
+            <button id="pauseBtn">일시정지</button>
+            <button id="resetBtn">다시시작</button>
         </div>
-
-        <div class="tips">
-          <p>
-            마우스/터치로 패들을 움직이세요. 키보드: ← →, 스페이스(시작/발사), P(일시정지), R(재시작)
-          </p>
+        <div class="instructions">
+            <p>마우스로 패들을 움직이세요. 모든 벽돌을 깨뜨리세요!</p>
         </div>
-      </section>
-    </main>
-
-    <script defer src="/js/game.js"></script>
-  </body>
+    </div>
+    <script src="game.js"></script>
+</body>
 </html>
