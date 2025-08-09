@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>벽돌깨기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gameCanvas" width="480" height="720" aria-label="벽돌깨기 게임 캔버스"></canvas>
+
+      <div id="controls">
+        <button id="startBtn" aria-label="게임 시작">시작</button>
+        <button id="pauseBtn" aria-label="일시정지">일시정지</button>
+        <button id="resumeBtn" aria-label="다시시작">다시시작</button>
+        <button id="restartBtn" aria-label="처음부터">처음부터</button>
+      </div>
+
+      <div id="tips">
+        <div>조작: ← → 키, 마우스 이동, 터치 드래그</div>
+        <div>스페이스: 시작/계속 • P: 일시정지</div>
+      </div>
+    </div>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
