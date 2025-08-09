@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>벽돌깨기 게임</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        
+        .game-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        canvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            background: #f0f0f0;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        .score {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧱 벽돌깨기 게임</h1>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <div class="score">점수: <span id="score">0</span></div>
+            <div class="score">생명: <span id="lives">3</span></div>
+            <button id="startBtn">게임 시작</button>
+            <button id="pauseBtn" disabled>일시정지</button>
+            <button id="resetBtn">다시 시작</button>
+        </div>
+        
+        <div class="instructions">
+            <p><strong>조작법:</strong> 마우스로 패들을 움직이거나 방향키를 사용하세요</p>
+            <p>공이 바닥에 떨어지면 생명이 줄어듭니다. 모든 벽돌을 깨면 승리!</p>
+        </div>
+    </div>
+
+    <script src="brick-breaker.js"></script>
+</body>
+</html>
