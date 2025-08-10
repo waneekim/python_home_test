@@ -672,4 +672,5 @@ class PlayerController {
             isGrounded: this.isGrounded,
             velocity: this.velocity.clone()
         };
-    }\n}
+    }
+}
