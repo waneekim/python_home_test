@@ -28,4 +28,655 @@ class GameManager {
         this.effectsManager = null;
         
         // 미로 시스템
-        this.maze = {\n            layout: null,\n            walls: [],\n            floors: [],\n            size: { width: 15, height: 15 }\n        };\n        \n        // 게임 설정\n        this.settings = {\n            difficulty: 'normal', // 'easy', 'normal', 'hard'\n            renderDistance: 100,\n            shadowQuality: 'medium',\n            particleCount: 'high'\n        };\n        \n        // 성능 모니터링\n        this.performance = {\n            fps: 60,\n            frameTime: 0,\n            lastFrameTime: 0\n        };\n        \n        // 게임 타이머\n        this.gameTimer = {\n            startTime: 0,\n            currentTime: 0,\n            deltaTime: 0\n        };\n        \n        // 승리 조건\n        this.winConditions = {\n            coinsRequired: 10, // 최소 수집해야 할 코인 수\n            enemiesRequired: 5, // 최소 처치해야 할 적 수\n            timeLimit: 300 // 5분 시간 제한 (선택사항)\n        };\n        \n        this.init();\n    }\n    \n    /**\n     * 게임 초기화\n     */\n    init() {\n        this.initThreeJS();\n        this.createMaze();\n        this.initSystems();\n        this.setupLighting();\n        this.startGameLoop();\n        \n        this.isInitialized = true;\n        console.log('🎮 게임 매니저 초기화 완료');\n    }\n    \n    /**\n     * Three.js 초기화\n     */\n    initThreeJS() {\n        // Scene 생성\n        this.scene = new THREE.Scene();\n        this.scene.background = new THREE.Color(0x001122);\n        this.scene.fog = new THREE.Fog(0x001122, 10, this.settings.renderDistance);\n        \n        // Camera 생성\n        this.camera = new THREE.PerspectiveCamera(\n            75, \n            window.innerWidth / window.innerHeight, \n            0.1, \n            this.settings.renderDistance\n        );\n        \n        // Renderer 생성\n        this.renderer = new THREE.WebGLRenderer({ \n            antialias: true,\n            powerPreference: 'high-performance'\n        });\n        this.renderer.setSize(window.innerWidth, window.innerHeight);\n        this.renderer.shadowMap.enabled = true;\n        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;\n        this.renderer.outputEncoding = THREE.sRGBEncoding;\n        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;\n        \n        // DOM에 추가\n        const container = document.getElementById('gameContainer');\n        if (container) {\n            container.appendChild(this.renderer.domElement);\n        }\n        \n        // 리사이즈 이벤트\n        window.addEventListener('resize', () => this.onWindowResize());\n    }\n    \n    /**\n     * 3D 미로 생성\n     */\n    createMaze() {\n        // 미로 레이아웃 (1=벽, 0=길, 2=코인 위치, 3=전기큐브 위치, 4=적 스폰)\n        this.maze.layout = [\n            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],\n            [1,0,2,0,1,0,0,0,1,0,0,2,0,0,1],\n            [1,0,1,0,1,0,1,0,1,0,1,1,1,0,1],\n            [1,0,0,0,0,0,1,0,0,0,1,0,3,0,1],\n            [1,1,1,1,0,1,1,1,1,0,1,0,1,0,1],\n            [1,0,0,2,0,0,0,0,0,0,1,0,0,0,1],\n            [1,0,1,1,1,1,1,0,1,1,1,1,1,0,1],\n            [1,0,0,0,0,0,1,0,0,0,0,0,1,4,1],\n            [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1],\n            [1,2,1,0,0,0,0,0,1,0,3,0,0,0,1],\n            [1,0,1,0,1,1,1,1,1,0,1,1,1,0,1],\n            [1,0,0,0,1,0,0,0,0,0,1,0,4,0,1],\n            [1,1,1,0,1,0,1,1,1,0,1,0,1,1,1],\n            [1,0,2,0,0,0,1,0,0,0,0,0,0,2,1],\n            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]\n        ];\n        \n        this.generateMazeGeometry();\n    }\n    \n    /**\n     * 미로 지오메트리 생성\n     */\n    generateMazeGeometry() {\n        // 재료 생성\n        const wallMaterial = new THREE.MeshLambertMaterial({ \n            color: 0x4a4a4a,\n            map: this.createWallTexture()\n        });\n        \n        const floorMaterial = new THREE.MeshLambertMaterial({ \n            color: 0x333333,\n            map: this.createFloorTexture()\n        });\n        \n        const ceilingMaterial = new THREE.MeshLambertMaterial({ \n            color: 0x222222\n        });\n        \n        // 바닥 생성\n        const floorGeometry = new THREE.PlaneGeometry(this.maze.size.width, this.maze.size.height);\n        const floor = new THREE.Mesh(floorGeometry, floorMaterial);\n        floor.rotation.x = -Math.PI / 2;\n        floor.position.y = 0;\n        floor.receiveShadow = true;\n        floor.userData.isFloor = true;\n        this.scene.add(floor);\n        \n        // 천장 생성\n        const ceiling = new THREE.Mesh(floorGeometry, ceilingMaterial);\n        ceiling.rotation.x = Math.PI / 2;\n        ceiling.position.y = 4;\n        ceiling.userData.isCeiling = true;\n        this.scene.add(ceiling);\n        \n        // 벽 생성\n        for (let z = 0; z < this.maze.layout.length; z++) {\n            for (let x = 0; x < this.maze.layout[z].length; x++) {\n                if (this.maze.layout[z][x] === 1) {\n                    this.createWallBlock(x, z, wallMaterial);\n                }\n            }\n        }\n    }\n    \n    /**\n     * 벽 블록 생성\n     */\n    createWallBlock(x, z, material) {\n        const wallGeometry = new THREE.BoxGeometry(1, 3, 1);\n        const wall = new THREE.Mesh(wallGeometry, material);\n        wall.position.set(x, 1.5, z);\n        wall.castShadow = true;\n        wall.receiveShadow = true;\n        wall.userData.isWall = true;\n        wall.userData.gridPosition = { x, z };\n        \n        this.maze.walls.push(wall);\n        this.scene.add(wall);\n    }\n    \n    /**\n     * 벽 텍스처 생성 (간단한 절차적 텍스처)\n     */\n    createWallTexture() {\n        const canvas = document.createElement('canvas');\n        canvas.width = 256;\n        canvas.height = 256;\n        const ctx = canvas.getContext('2d');\n        \n        // 벽돌 패턴\n        ctx.fillStyle = '#4a4a4a';\n        ctx.fillRect(0, 0, 256, 256);\n        \n        ctx.strokeStyle = '#333';\n        ctx.lineWidth = 2;\n        \n        // 수직선\n        for (let i = 0; i < 256; i += 32) {\n            ctx.beginPath();\n            ctx.moveTo(i, 0);\n            ctx.lineTo(i, 256);\n            ctx.stroke();\n        }\n        \n        // 수평선\n        for (let i = 0; i < 256; i += 32) {\n            ctx.beginPath();\n            ctx.moveTo(0, i);\n            ctx.lineTo(256, i);\n            ctx.stroke();\n        }\n        \n        const texture = new THREE.CanvasTexture(canvas);\n        texture.wrapS = THREE.RepeatWrapping;\n        texture.wrapT = THREE.RepeatWrapping;\n        texture.repeat.set(1, 1);\n        \n        return texture;\n    }\n    \n    /**\n     * 바닥 텍스처 생성\n     */\n    createFloorTexture() {\n        const canvas = document.createElement('canvas');\n        canvas.width = 256;\n        canvas.height = 256;\n        const ctx = canvas.getContext('2d');\n        \n        // 체크무늬 패턴\n        for (let x = 0; x < 8; x++) {\n            for (let y = 0; y < 8; y++) {\n                ctx.fillStyle = (x + y) % 2 === 0 ? '#444' : '#333';\n                ctx.fillRect(x * 32, y * 32, 32, 32);\n            }\n        }\n        \n        const texture = new THREE.CanvasTexture(canvas);\n        texture.wrapS = THREE.RepeatWrapping;\n        texture.wrapT = THREE.RepeatWrapping;\n        texture.repeat.set(4, 4);\n        \n        return texture;\n    }\n    \n    /**\n     * 시스템들 초기화\n     */\n    initSystems() {\n        // UI 매니저 (가장 먼저)\n        this.uiManager = new UIManager(this);\n        \n        // 플레이어 컨트롤러\n        this.playerController = new PlayerController(this.scene, this.camera, this);\n        \n        // 전기 총\n        this.electroGun = new ElectroGun(this.scene, this.camera, this);\n        \n        // 적 매니저\n        this.enemyManager = new EnemyAI(this.scene, this);\n        \n        // 아이템 매니저\n        this.itemManager = new ItemManager(this.scene, this);\n        \n        // 이펙트 매니저\n        this.effectsManager = new EffectsManager(this.scene, this);\n        \n        // 시스템 간 참조 설정\n        this.setupSystemReferences();\n    }\n    \n    /**\n     * 시스템 간 참조 설정\n     */\n    setupSystemReferences() {\n        // 플레이어 컨트롤러에 총 참조 추가\n        if (this.playerController && this.electroGun) {\n            this.playerController.electroGun = this.electroGun;\n        }\n        \n        // 적 매니저에 플레이어 참조 추가\n        if (this.enemyManager && this.playerController) {\n            this.enemyManager.playerController = this.playerController;\n        }\n    }\n    \n    /**\n     * 조명 설정\n     */\n    setupLighting() {\n        // 주변광\n        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);\n        this.scene.add(ambientLight);\n        \n        // 주 방향광\n        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);\n        directionalLight.position.set(10, 10, 5);\n        directionalLight.castShadow = true;\n        \n        // 그림자 설정\n        directionalLight.shadow.mapSize.width = 2048;\n        directionalLight.shadow.mapSize.height = 2048;\n        directionalLight.shadow.camera.near = 0.5;\n        directionalLight.shadow.camera.far = 50;\n        directionalLight.shadow.camera.left = -15;\n        directionalLight.shadow.camera.right = 15;\n        directionalLight.shadow.camera.top = 15;\n        directionalLight.shadow.camera.bottom = -15;\n        \n        this.scene.add(directionalLight);\n        \n        // 미로 중앙 스팟라이트\n        const spotLight = new THREE.SpotLight(0xffffff, 0.5, 20, Math.PI * 0.3, 0.3, 1);\n        spotLight.position.set(7.5, 8, 7.5);\n        spotLight.target.position.set(7.5, 0, 7.5);\n        spotLight.castShadow = true;\n        this.scene.add(spotLight);\n        this.scene.add(spotLight.target);\n    }\n    \n    /**\n     * 게임 루프 시작\n     */\n    startGameLoop() {\n        this.gameTimer.lastFrameTime = performance.now();\n        this.animate();\n    }\n    \n    /**\n     * 메인 게임 루프\n     */\n    animate() {\n        requestAnimationFrame(() => this.animate());\n        \n        // 델타 타임 계산\n        const currentTime = performance.now();\n        this.gameTimer.deltaTime = (currentTime - this.gameTimer.lastFrameTime) / 1000;\n        this.gameTimer.lastFrameTime = currentTime;\n        this.gameTimer.currentTime += this.gameTimer.deltaTime;\n        \n        // FPS 계산\n        this.performance.fps = 1 / this.gameTimer.deltaTime;\n        \n        // 게임이 진행 중일 때만 업데이트\n        if (this.gameState === 'playing') {\n            this.updateSystems(this.gameTimer.deltaTime);\n            this.checkWinConditions();\n            this.checkLoseConditions();\n        }\n        \n        // UI는 항상 업데이트\n        if (this.uiManager) {\n            this.uiManager.update(this.gameTimer.deltaTime);\n        }\n        \n        // 렌더링\n        this.renderer.render(this.scene, this.camera);\n    }\n    \n    /**\n     * 시스템들 업데이트\n     */\n    updateSystems(deltaTime) {\n        // 플레이어 업데이트\n        if (this.playerController) {\n            this.playerController.update(deltaTime);\n        }\n        \n        // 전기 총 업데이트\n        if (this.electroGun) {\n            this.electroGun.update(deltaTime);\n        }\n        \n        // 적 매니저 업데이트\n        if (this.enemyManager) {\n            this.enemyManager.update(deltaTime);\n        }\n        \n        // 아이템 매니저 업데이트\n        if (this.itemManager) {\n            this.itemManager.update(deltaTime);\n        }\n        \n        // 이펙트 매니저 업데이트\n        if (this.effectsManager) {\n            this.effectsManager.update(deltaTime);\n        }\n    }\n    \n    /**\n     * 승리 조건 체크\n     */\n    checkWinConditions() {\n        if (!this.uiManager) return;\n        \n        const stats = this.uiManager.getState().gameStats;\n        \n        // 모든 코인 수집했는지 체크\n        const allCoinsCollected = this.itemManager && this.itemManager.coins.length === 0;\n        \n        // 최소 조건 만족했는지 체크\n        const minCoinsCollected = stats.coinsCollected >= this.winConditions.coinsRequired;\n        const minEnemiesKilled = stats.enemiesKilled >= this.winConditions.enemiesRequired;\n        \n        if (allCoinsCollected && minCoinsCollected && minEnemiesKilled) {\n            this.victory();\n        }\n    }\n    \n    /**\n     * 패배 조건 체크\n     */\n    checkLoseConditions() {\n        // 플레이어 사망\n        if (this.playerController && !this.playerController.isAlive) {\n            this.gameOver();\n            return;\n        }\n        \n        // 시간 제한 (선택사항)\n        if (this.winConditions.timeLimit > 0) {\n            if (this.gameTimer.currentTime > this.winConditions.timeLimit) {\n                this.gameOver();\n                return;\n            }\n        }\n    }\n    \n    /**\n     * 게임 시작\n     */\n    startGame() {\n        this.gameState = 'playing';\n        this.gameTimer.startTime = performance.now();\n        this.gameTimer.currentTime = 0;\n        \n        // 시스템들 리셋\n        if (this.playerController) this.playerController.reset();\n        if (this.electroGun) this.electroGun.reset();\n        if (this.enemyManager) this.enemyManager.clearAllEnemies();\n        if (this.itemManager) this.itemManager.reset();\n        if (this.effectsManager) this.effectsManager.reset();\n        \n        console.log('🚀 게임 시작!');\n    }\n    \n    /**\n     * 게임 일시정지\n     */\n    pauseGame() {\n        if (this.gameState === 'playing') {\n            this.gameState = 'paused';\n        }\n    }\n    \n    /**\n     * 게임 재개\n     */\n    resumeGame() {\n        if (this.gameState === 'paused') {\n            this.gameState = 'playing';\n        }\n    }\n    \n    /**\n     * 게임 재시작\n     */\n    restartGame() {\n        this.gameState = 'playing';\n        this.gameTimer.startTime = performance.now();\n        this.gameTimer.currentTime = 0;\n        \n        // 모든 시스템 리셋\n        if (this.playerController) this.playerController.reset();\n        if (this.electroGun) this.electroGun.reset();\n        if (this.enemyManager) this.enemyManager.clearAllEnemies();\n        if (this.itemManager) this.itemManager.reset();\n        if (this.effectsManager) this.effectsManager.reset();\n        if (this.uiManager) this.uiManager.resetStats();\n        \n        console.log('🔄 게임 재시작!');\n    }\n    \n    /**\n     * 게임 오버\n     */\n    gameOver() {\n        this.gameState = 'gameOver';\n        \n        if (this.uiManager) {\n            this.uiManager.showGameOver();\n        }\n        \n        console.log('💀 게임 오버!');\n    }\n    \n    /**\n     * 승리\n     */\n    victory() {\n        this.gameState = 'victory';\n        \n        if (this.uiManager) {\n            this.uiManager.showVictory();\n        }\n        \n        // 승리 이펙트\n        if (this.effectsManager) {\n            this.effectsManager.createVictoryEffect();\n        }\n        \n        console.log('🎉 승리!');\n    }\n    \n    /**\n     * 미로 충돌 검사\n     */\n    checkMazeCollision(position, radius = 0.3) {\n        const x = Math.floor(position.x + 0.5);\n        const z = Math.floor(position.z + 0.5);\n        \n        // 경계 체크\n        if (x < 0 || x >= this.maze.size.width || z < 0 || z >= this.maze.size.height) {\n            return true;\n        }\n        \n        // 벽 체크\n        return this.maze.layout[z] && this.maze.layout[z][x] === 1;\n    }\n    \n    /**\n     * 총알 벽 충돌 검사\n     */\n    checkBulletWallCollision(position) {\n        return this.checkMazeCollision(position, 0.1);\n    }\n    \n    /**\n     * 미로 위치가 벽인지 체크\n     */\n    isWall(x, z) {\n        if (x < 0 || x >= this.maze.size.width || z < 0 || z >= this.maze.size.height) {\n            return true;\n        }\n        return this.maze.layout[z][x] === 1;\n    }\n    \n    /**\n     * 윈도우 리사이즈 처리\n     */\n    onWindowResize() {\n        this.camera.aspect = window.innerWidth / window.innerHeight;\n        this.camera.updateProjectionMatrix();\n        this.renderer.setSize(window.innerWidth, window.innerHeight);\n    }\n    \n    /**\n     * 게임 상태 확인\n     */\n    isPlaying() {\n        return this.gameState === 'playing';\n    }\n    \n    isPaused() {\n        return this.gameState === 'paused';\n    }\n    \n    isGameOver() {\n        return this.gameState === 'gameOver';\n    }\n    \n    isVictory() {\n        return this.gameState === 'victory';\n    }\n    \n    /**\n     * 게임 설정 변경\n     */\n    updateSettings(newSettings) {\n        this.settings = { ...this.settings, ...newSettings };\n        \n        // 설정에 따른 렌더러 업데이트\n        if (newSettings.shadowQuality) {\n            this.updateShadowQuality(newSettings.shadowQuality);\n        }\n        \n        if (newSettings.renderDistance) {\n            this.camera.far = newSettings.renderDistance;\n            this.camera.updateProjectionMatrix();\n            this.scene.fog.far = newSettings.renderDistance;\n        }\n    }\n    \n    /**\n     * 그림자 품질 업데이트\n     */\n    updateShadowQuality(quality) {\n        const shadowMaps = {\n            'low': 512,\n            'medium': 1024,\n            'high': 2048,\n            'ultra': 4096\n        };\n        \n        const mapSize = shadowMaps[quality] || 1024;\n        \n        this.scene.traverse((object) => {\n            if (object.isLight && object.shadow) {\n                object.shadow.mapSize.width = mapSize;\n                object.shadow.mapSize.height = mapSize;\n            }\n        });\n    }\n    \n    /**\n     * 디버그 정보 출력\n     */\n    getDebugInfo() {\n        return {\n            gameState: this.gameState,\n            fps: Math.round(this.performance.fps),\n            gameTime: Math.round(this.gameTimer.currentTime),\n            playerPosition: this.playerController ? this.playerController.position.clone() : null,\n            enemyCount: this.enemyManager ? this.enemyManager.enemies.length : 0,\n            itemCount: this.itemManager ? this.itemManager.getState().totalItems : 0\n        };\n    }\n    \n    /**\n     * 정리 (게임 종료 시)\n     */\n    dispose() {\n        // 이벤트 리스너 제거\n        window.removeEventListener('resize', this.onWindowResize);\n        \n        // Three.js 객체들 정리\n        if (this.renderer) {\n            this.renderer.dispose();\n        }\n        \n        this.scene.traverse((object) => {\n            if (object.geometry) object.geometry.dispose();\n            if (object.material) {\n                if (Array.isArray(object.material)) {\n                    object.material.forEach(material => material.dispose());\n                } else {\n                    object.material.dispose();\n                }\n            }\n        });\n        \n        console.log('🧹 게임 매니저 정리 완료');\n    }\n}
+        this.maze = {
+            layout: null,
+            walls: [],
+            floors: [],
+            size: { width: 15, height: 15 }
+        };
+        
+        // 게임 설정
+        this.settings = {
+            difficulty: 'normal', // 'easy', 'normal', 'hard'
+            renderDistance: 100,
+            shadowQuality: 'medium',
+            particleCount: 'high'
+        };
+        
+        // 성능 모니터링
+        this.performance = {
+            fps: 60,
+            frameTime: 0,
+            lastFrameTime: 0
+        };
+        
+        // 게임 타이머
+        this.gameTimer = {
+            startTime: 0,
+            currentTime: 0,
+            deltaTime: 0
+        };
+        
+        // 승리 조건
+        this.winConditions = {
+            coinsRequired: 10, // 최소 수집해야 할 코인 수
+            enemiesRequired: 5, // 최소 처치해야 할 적 수
+            timeLimit: 300 // 5분 시간 제한 (선택사항)
+        };
+        
+        this.init();
+    }
+    
+    /**
+     * 게임 초기화
+     */
+    init() {
+        this.initThreeJS();
+        this.createMaze();
+        this.initSystems();
+        this.setupLighting();
+        this.startGameLoop();
+        
+        this.isInitialized = true;
+        console.log('🎮 게임 매니저 초기화 완료');
+    }
+    
+    /**
+     * Three.js 초기화
+     */
+    initThreeJS() {
+        // Scene 생성
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x001122);
+        this.scene.fog = new THREE.Fog(0x001122, 10, this.settings.renderDistance);
+        
+        // Camera 생성
+        this.camera = new THREE.PerspectiveCamera(
+            75, 
+            window.innerWidth / window.innerHeight, 
+            0.1, 
+            this.settings.renderDistance
+        );
+        
+        // Renderer 생성
+        this.renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            powerPreference: 'high-performance'
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        
+        // DOM에 추가
+        const container = document.getElementById('gameContainer');
+        if (container) {
+            container.appendChild(this.renderer.domElement);
+        }
+        
+        // 리사이즈 이벤트
+        window.addEventListener('resize', () => this.onWindowResize());
+    }
+    
+    /**
+     * 3D 미로 생성
+     */
+    createMaze() {
+        // 미로 레이아웃 (1=벽, 0=길, 2=코인 위치, 3=전기큐브 위치, 4=적 스폰)
+        this.maze.layout = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,2,0,1,0,0,0,1,0,0,2,0,0,1],
+            [1,0,1,0,1,0,1,0,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,1,0,0,0,1,0,3,0,1],
+            [1,1,1,1,0,1,1,1,1,0,1,0,1,0,1],
+            [1,0,0,2,0,0,0,0,0,0,1,0,0,0,1],
+            [1,0,1,1,1,1,1,0,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,1,0,0,0,0,0,1,4,1],
+            [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1],
+            [1,2,1,0,0,0,0,0,1,0,3,0,0,0,1],
+            [1,0,1,0,1,1,1,1,1,0,1,1,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,4,0,1],
+            [1,1,1,0,1,0,1,1,1,0,1,0,1,1,1],
+            [1,0,2,0,0,0,1,0,0,0,0,0,0,2,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+        
+        this.generateMazeGeometry();
+    }
+    
+    /**
+     * 미로 지오메트리 생성
+     */
+    generateMazeGeometry() {
+        // 재료 생성
+        const wallMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x4a4a4a,
+            map: this.createWallTexture()
+        });
+        
+        const floorMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x333333,
+            map: this.createFloorTexture()
+        });
+        
+        const ceilingMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x222222
+        });
+        
+        // 바닥 생성
+        const floorGeometry = new THREE.PlaneGeometry(this.maze.size.width, this.maze.size.height);
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        floor.receiveShadow = true;
+        floor.userData.isFloor = true;
+        this.scene.add(floor);
+        
+        // 천장 생성
+        const ceiling = new THREE.Mesh(floorGeometry, ceilingMaterial);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.y = 4;
+        ceiling.userData.isCeiling = true;
+        this.scene.add(ceiling);
+        
+        // 벽 생성
+        for (let z = 0; z < this.maze.layout.length; z++) {
+            for (let x = 0; x < this.maze.layout[z].length; x++) {
+                if (this.maze.layout[z][x] === 1) {
+                    this.createWallBlock(x, z, wallMaterial);
+                }
+            }
+        }
+    }
+    
+    /**
+     * 벽 블록 생성
+     */
+    createWallBlock(x, z, material) {
+        const wallGeometry = new THREE.BoxGeometry(1, 3, 1);
+        const wall = new THREE.Mesh(wallGeometry, material);
+        wall.position.set(x, 1.5, z);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        wall.userData.isWall = true;
+        wall.userData.gridPosition = { x, z };
+        
+        this.maze.walls.push(wall);
+        this.scene.add(wall);
+    }
+    
+    /**
+     * 벽 텍스처 생성 (간단한 절차적 텍스처)
+     */
+    createWallTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // 벽돌 패턴
+        ctx.fillStyle = '#4a4a4a';
+        ctx.fillRect(0, 0, 256, 256);
+        
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        
+        // 수직선
+        for (let i = 0; i < 256; i += 32) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 256);
+            ctx.stroke();
+        }
+        
+        // 수평선
+        for (let i = 0; i < 256; i += 32) {
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(256, i);
+            ctx.stroke();
+        }
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        
+        return texture;
+    }
+    
+    /**
+     * 바닥 텍스처 생성
+     */
+    createFloorTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // 체크무늬 패턴
+        for (let x = 0; x < 8; x++) {
+            for (let y = 0; y < 8; y++) {
+                ctx.fillStyle = (x + y) % 2 === 0 ? '#444' : '#333';
+                ctx.fillRect(x * 32, y * 32, 32, 32);
+            }
+        }
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 4);
+        
+        return texture;
+    }
+    
+    /**
+     * 시스템들 초기화
+     */
+    initSystems() {
+        // UI 매니저 (가장 먼저)
+        this.uiManager = new UIManager(this);
+        
+        // 플레이어 컨트롤러
+        this.playerController = new PlayerController(this.scene, this.camera, this);
+        
+        // 전기 총
+        this.electroGun = new ElectroGun(this.scene, this.camera, this);
+        
+        // 적 매니저
+        this.enemyManager = new EnemyAI(this.scene, this);
+        
+        // 아이템 매니저
+        this.itemManager = new ItemManager(this.scene, this);
+        
+        // 이펙트 매니저
+        this.effectsManager = new EffectsManager(this.scene, this);
+        
+        // 시스템 간 참조 설정
+        this.setupSystemReferences();
+    }
+    
+    /**
+     * 시스템 간 참조 설정
+     */
+    setupSystemReferences() {
+        // 플레이어 컨트롤러에 총 참조 추가
+        if (this.playerController && this.electroGun) {
+            this.playerController.electroGun = this.electroGun;
+        }
+        
+        // 적 매니저에 플레이어 참조 추가
+        if (this.enemyManager && this.playerController) {
+            this.enemyManager.playerController = this.playerController;
+        }
+    }
+    
+    /**
+     * 조명 설정
+     */
+    setupLighting() {
+        // 주변광
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        this.scene.add(ambientLight);
+        
+        // 주 방향광
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        
+        // 그림자 설정
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -15;
+        directionalLight.shadow.camera.right = 15;
+        directionalLight.shadow.camera.top = 15;
+        directionalLight.shadow.camera.bottom = -15;
+        
+        this.scene.add(directionalLight);
+        
+        // 미로 중앙 스팟라이트
+        const spotLight = new THREE.SpotLight(0xffffff, 0.5, 20, Math.PI * 0.3, 0.3, 1);
+        spotLight.position.set(7.5, 8, 7.5);
+        spotLight.target.position.set(7.5, 0, 7.5);
+        spotLight.castShadow = true;
+        this.scene.add(spotLight);
+        this.scene.add(spotLight.target);
+    }
+    
+    /**
+     * 게임 루프 시작
+     */
+    startGameLoop() {
+        this.gameTimer.lastFrameTime = performance.now();
+        this.animate();
+    }
+    
+    /**
+     * 메인 게임 루프
+     */
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        
+        // 델타 타임 계산
+        const currentTime = performance.now();
+        this.gameTimer.deltaTime = (currentTime - this.gameTimer.lastFrameTime) / 1000;
+        this.gameTimer.lastFrameTime = currentTime;
+        this.gameTimer.currentTime += this.gameTimer.deltaTime;
+        
+        // FPS 계산
+        this.performance.fps = 1 / this.gameTimer.deltaTime;
+        
+        // 게임이 진행 중일 때만 업데이트
+        if (this.gameState === 'playing') {
+            this.updateSystems(this.gameTimer.deltaTime);
+            this.checkWinConditions();
+            this.checkLoseConditions();
+        }
+        
+        // UI는 항상 업데이트
+        if (this.uiManager) {
+            this.uiManager.update(this.gameTimer.deltaTime);
+        }
+        
+        // 렌더링
+        this.renderer.render(this.scene, this.camera);
+    }
+    
+    /**
+     * 시스템들 업데이트
+     */
+    updateSystems(deltaTime) {
+        // 플레이어 업데이트
+        if (this.playerController) {
+            this.playerController.update(deltaTime);
+        }
+        
+        // 전기 총 업데이트
+        if (this.electroGun) {
+            this.electroGun.update(deltaTime);
+        }
+        
+        // 적 매니저 업데이트
+        if (this.enemyManager) {
+            this.enemyManager.update(deltaTime);
+        }
+        
+        // 아이템 매니저 업데이트
+        if (this.itemManager) {
+            this.itemManager.update(deltaTime);
+        }
+        
+        // 이펙트 매니저 업데이트
+        if (this.effectsManager) {
+            this.effectsManager.update(deltaTime);
+        }
+    }
+    
+    /**
+     * 승리 조건 체크
+     */
+    checkWinConditions() {
+        if (!this.uiManager) return;
+        
+        const stats = this.uiManager.getState().gameStats;
+        
+        // 모든 코인 수집했는지 체크
+        const allCoinsCollected = this.itemManager && this.itemManager.coins.length === 0;
+        
+        // 최소 조건 만족했는지 체크
+        const minCoinsCollected = stats.coinsCollected >= this.winConditions.coinsRequired;
+        const minEnemiesKilled = stats.enemiesKilled >= this.winConditions.enemiesRequired;
+        
+        if (allCoinsCollected && minCoinsCollected && minEnemiesKilled) {
+            this.victory();
+        }
+    }
+    
+    /**
+     * 패배 조건 체크
+     */
+    checkLoseConditions() {
+        // 플레이어 사망
+        if (this.playerController && !this.playerController.isAlive) {
+            this.gameOver();
+            return;
+        }
+        
+        // 시간 제한 (선택사항)
+        if (this.winConditions.timeLimit > 0) {
+            if (this.gameTimer.currentTime > this.winConditions.timeLimit) {
+                this.gameOver();
+                return;
+            }
+        }
+    }
+    
+    /**
+     * 게임 시작
+     */
+    startGame() {
+        this.gameState = 'playing';
+        this.gameTimer.startTime = performance.now();
+        this.gameTimer.currentTime = 0;
+        
+        // 시스템들 리셋
+        if (this.playerController) this.playerController.reset();
+        if (this.electroGun) this.electroGun.reset();
+        if (this.enemyManager) this.enemyManager.clearAllEnemies();
+        if (this.itemManager) this.itemManager.reset();
+        if (this.effectsManager) this.effectsManager.reset();
+        
+        console.log('🚀 게임 시작!');
+    }
+    
+    /**
+     * 게임 일시정지
+     */
+    pauseGame() {
+        if (this.gameState === 'playing') {
+            this.gameState = 'paused';
+        }
+    }
+    
+    /**
+     * 게임 재개
+     */
+    resumeGame() {
+        if (this.gameState === 'paused') {
+            this.gameState = 'playing';
+        }
+    }
+    
+    /**
+     * 게임 재시작
+     */
+    restartGame() {
+        this.gameState = 'playing';
+        this.gameTimer.startTime = performance.now();
+        this.gameTimer.currentTime = 0;
+        
+        // 모든 시스템 리셋
+        if (this.playerController) this.playerController.reset();
+        if (this.electroGun) this.electroGun.reset();
+        if (this.enemyManager) this.enemyManager.clearAllEnemies();
+        if (this.itemManager) this.itemManager.reset();
+        if (this.effectsManager) this.effectsManager.reset();
+        if (this.uiManager) this.uiManager.resetStats();
+        
+        console.log('🔄 게임 재시작!');
+    }
+    
+    /**
+     * 게임 오버
+     */
+    gameOver() {
+        this.gameState = 'gameOver';
+        
+        if (this.uiManager) {
+            this.uiManager.showGameOver();
+        }
+        
+        console.log('💀 게임 오버!');
+    }
+    
+    /**
+     * 승리
+     */
+    victory() {
+        this.gameState = 'victory';
+        
+        if (this.uiManager) {
+            this.uiManager.showVictory();
+        }
+        
+        // 승리 이펙트
+        if (this.effectsManager) {
+            this.effectsManager.createVictoryEffect();
+        }
+        
+        console.log('🎉 승리!');
+    }
+    
+    /**
+     * 미로 충돌 검사
+     */
+    checkMazeCollision(position, radius = 0.3) {
+        const x = Math.floor(position.x + 0.5);
+        const z = Math.floor(position.z + 0.5);
+        
+        // 경계 체크
+        if (x < 0 || x >= this.maze.size.width || z < 0 || z >= this.maze.size.height) {
+            return true;
+        }
+        
+        // 벽 체크
+        return this.maze.layout[z] && this.maze.layout[z][x] === 1;
+    }
+    
+    /**
+     * 총알 벽 충돌 검사
+     */
+    checkBulletWallCollision(position) {
+        return this.checkMazeCollision(position, 0.1);
+    }
+    
+    /**
+     * 미로 위치가 벽인지 체크
+     */
+    isWall(x, z) {
+        if (x < 0 || x >= this.maze.size.width || z < 0 || z >= this.maze.size.height) {
+            return true;
+        }
+        return this.maze.layout[z][x] === 1;
+    }
+    
+    /**
+     * 윈도우 리사이즈 처리
+     */
+    onWindowResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    
+    /**
+     * 게임 상태 확인
+     */
+    isPlaying() {
+        return this.gameState === 'playing';
+    }
+    
+    isPaused() {
+        return this.gameState === 'paused';
+    }
+    
+    isGameOver() {
+        return this.gameState === 'gameOver';
+    }
+    
+    isVictory() {
+        return this.gameState === 'victory';
+    }
+    
+    /**
+     * 게임 설정 변경
+     */
+    updateSettings(newSettings) {
+        this.settings = { ...this.settings, ...newSettings };
+        
+        // 설정에 따른 렌더러 업데이트
+        if (newSettings.shadowQuality) {
+            this.updateShadowQuality(newSettings.shadowQuality);
+        }
+        
+        if (newSettings.renderDistance) {
+            this.camera.far = newSettings.renderDistance;
+            this.camera.updateProjectionMatrix();
+            this.scene.fog.far = newSettings.renderDistance;
+        }
+    }
+    
+    /**
+     * 그림자 품질 업데이트
+     */
+    updateShadowQuality(quality) {
+        const shadowMaps = {
+            'low': 512,
+            'medium': 1024,
+            'high': 2048,
+            'ultra': 4096
+        };
+        
+        const mapSize = shadowMaps[quality] || 1024;
+        
+        this.scene.traverse((object) => {
+            if (object.isLight && object.shadow) {
+                object.shadow.mapSize.width = mapSize;
+                object.shadow.mapSize.height = mapSize;
+            }
+        });
+    }
+    
+    /**
+     * 디버그 정보 출력
+     */
+    getDebugInfo() {
+        return {
+            gameState: this.gameState,
+            fps: Math.round(this.performance.fps),
+            gameTime: Math.round(this.gameTimer.currentTime),
+            playerPosition: this.playerController ? this.playerController.position.clone() : null,
+            enemyCount: this.enemyManager ? this.enemyManager.enemies.length : 0,
+            itemCount: this.itemManager ? this.itemManager.getState().totalItems : 0
+        };
+    }
+    
+    /**
+     * 정리 (게임 종료 시)
+     */
+    dispose() {
+        // 이벤트 리스너 제거
+        window.removeEventListener('resize', this.onWindowResize);
+        
+        // Three.js 객체들 정리
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
+        
+        this.scene.traverse((object) => {
+            if (object.geometry) object.geometry.dispose();
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => material.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+        });
+        
+        console.log('🧹 게임 매니저 정리 완료');
+    }
+}

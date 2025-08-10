@@ -434,4 +434,371 @@ class EnemyAI {
             // 마지막 목격 지점에 도달했으면 주변 수색
             if (enemy.position.distanceTo(this.playerLastKnownPosition) < 2) {
                 const searchRadius = 3;
-                data.destination = new THREE.Vector3(\n                    this.playerLastKnownPosition.x + (Math.random() - 0.5) * searchRadius,\n                    this.playerLastKnownPosition.y,\n                    this.playerLastKnownPosition.z + (Math.random() - 0.5) * searchRadius\n                );\n            }\n        }\n    }\n    \n    /**\n     * 추적 행동\n     */\n    handleChase(enemy, playerPos) {\n        const data = enemy.userData;\n        \n        // 행동 타입별 차별화\n        switch (data.behavior) {\n            case 'aggressive':\n                data.destination = playerPos.clone();\n                break;\n                \n            case 'hit_and_run':\n                // 가까이 다가갔다가 도망\n                const distance = enemy.position.distanceTo(playerPos);\n                if (distance < 3) {\n                    const fleeDirection = enemy.position.clone().sub(playerPos).normalize();\n                    data.destination = enemy.position.clone().add(fleeDirection.multiplyScalar(5));\n                } else {\n                    data.destination = playerPos.clone();\n                }\n                break;\n                \n            case 'tank':\n                // 천천히 직진\n                data.destination = playerPos.clone();\n                break;\n                \n            case 'ranged':\n                // 일정 거리 유지\n                const optimalRange = data.attackRange * 0.8;\n                const currentDistance = enemy.position.distanceTo(playerPos);\n                \n                if (currentDistance < optimalRange) {\n                    // 너무 가깝면 후퇴\n                    const retreatDirection = enemy.position.clone().sub(playerPos).normalize();\n                    data.destination = enemy.position.clone().add(retreatDirection.multiplyScalar(2));\n                } else if (currentDistance > data.attackRange) {\n                    // 너무 멀면 접근\n                    data.destination = playerPos.clone();\n                } else {\n                    // 적정 거리면 정지\n                    data.destination = enemy.position.clone();\n                }\n                break;\n        }\n    }\n    \n    /**\n     * 공격 행동\n     */\n    handleAttack(enemy, deltaTime) {\n        const data = enemy.userData;\n        \n        if (data.attackCooldown <= 0 && data.target) {\n            // 공격 실행\n            this.performAttack(enemy);\n            \n            // 쿨다운 설정 (타입별 차별화)\n            switch (data.behavior) {\n                case 'aggressive':\n                    data.attackCooldown = 1.5;\n                    break;\n                case 'hit_and_run':\n                    data.attackCooldown = 0.8;\n                    break;\n                case 'tank':\n                    data.attackCooldown = 2.5;\n                    break;\n                case 'ranged':\n                    data.attackCooldown = 3.0;\n                    break;\n            }\n        }\n    }\n    \n    /**\n     * 실제 공격 수행\n     */\n    performAttack(enemy) {\n        const data = enemy.userData;\n        const target = data.target;\n        \n        if (!target) return;\n        \n        // 타입별 공격 방식\n        switch (data.behavior) {\n            case 'ranged':\n                this.createEnemyProjectile(enemy, target.position);\n                break;\n            default:\n                // 근접 공격\n                if (enemy.position.distanceTo(target.position) <= data.attackRange) {\n                    target.takeDamage(data.damage, enemy);\n                }\n                break;\n        }\n        \n        // 공격 이펙트\n        this.createAttackEffect(enemy);\n        \n        console.log(`${data.type}이(가) 공격! 데미지: ${data.damage}`);\n    }\n    \n    /**\n     * 적 투사체 생성 (원거리 공격용)\n     */\n    createEnemyProjectile(enemy, targetPos) {\n        const projectileGeometry = new THREE.SphereGeometry(0.1, 6, 6);\n        const projectileMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4444 });\n        const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);\n        \n        projectile.position.copy(enemy.position);\n        projectile.position.y += 0.5;\n        \n        const direction = targetPos.clone().sub(projectile.position).normalize();\n        \n        projectile.userData = {\n            velocity: direction.multiplyScalar(15),\n            damage: enemy.userData.damage,\n            life: 3.0,\n            owner: enemy\n        };\n        \n        this.scene.add(projectile);\n        \n        // 프로젝타일 업데이트를 위한 배열에 추가\n        if (!this.enemyProjectiles) this.enemyProjectiles = [];\n        this.enemyProjectiles.push(projectile);\n    }\n    \n    /**\n     * 적 이동 업데이트\n     */\n    updateEnemyMovement(enemy, deltaTime) {\n        const data = enemy.userData;\n        const destination = data.destination;\n        \n        if (!destination) return;\n        \n        const direction = destination.clone().sub(enemy.position);\n        direction.y = 0; // Y축 제거\n        \n        const distance = direction.length();\n        \n        if (distance > 0.1) {\n            direction.normalize();\n            \n            // 속도 조절\n            let moveSpeed = data.speed;\n            if (data.state === 'chase' && data.behavior === 'hit_and_run') {\n                moveSpeed *= 1.5; // 스카우트는 추적 시 빠름\n            }\n            \n            const moveDistance = moveSpeed * deltaTime;\n            const actualMove = Math.min(moveDistance, distance);\n            \n            const movement = direction.multiplyScalar(actualMove);\n            \n            // 충돌 검사\n            const newPosition = enemy.position.clone().add(movement);\n            if (!this.checkEnemyCollision(newPosition)) {\n                enemy.position.add(movement);\n                \n                // 이동 방향으로 회전\n                enemy.lookAt(enemy.position.clone().add(direction));\n            }\n        }\n    }\n    \n    /**\n     * 적 충돌 검사\n     */\n    checkEnemyCollision(position) {\n        // 간단한 경계 검사 (실제 구현에서는 미로와 충돌 검사)\n        if (position.x < 0 || position.x > 15 || position.z < 0 || position.z > 15) {\n            return true;\n        }\n        \n        // 미로와의 충돌 검사 (gameManager.maze 사용)\n        if (this.gameManager.maze && this.gameManager.maze.checkCollision) {\n            return this.gameManager.maze.checkCollision(position, 0.3);\n        }\n        \n        return false;\n    }\n    \n    /**\n     * 적 애니메이션 업데이트\n     */\n    updateEnemyAnimation(enemy, deltaTime) {\n        const data = enemy.userData;\n        const anim = data.walkAnimation;\n        \n        if (!anim) return;\n        \n        // 이동 중일 때 걷기 애니메이션\n        const isMoving = data.destination && enemy.position.distanceTo(data.destination) > 0.5;\n        \n        if (isMoving) {\n            anim.timer += deltaTime * 6.0;\n            \n            const swing = Math.sin(anim.timer) * 0.2;\n            \n            // 다리 애니메이션\n            if (anim.leftLeg && anim.rightLeg) {\n                anim.leftLeg.rotation.x = swing;\n                anim.rightLeg.rotation.x = -swing;\n            }\n            \n            // 팔 애니메이션 (반대로)\n            if (anim.leftArm && anim.rightArm) {\n                anim.leftArm.rotation.x = -swing * 0.5;\n                anim.rightArm.rotation.x = swing * 0.5;\n            }\n        } else {\n            // 정지 시 원래 위치로\n            if (anim.leftLeg) anim.leftLeg.rotation.x = 0;\n            if (anim.rightLeg) anim.rightLeg.rotation.x = 0;\n            if (anim.leftArm) anim.leftArm.rotation.x = 0;\n            if (anim.rightArm) anim.rightArm.rotation.x = 0;\n        }\n    }\n    \n    /**\n     * 적이 데미지를 받았을 때\n     */\n    damageEnemy(enemy, damage) {\n        const data = enemy.userData;\n        \n        data.health -= damage;\n        data.lastDamageTime = performance.now();\n        \n        // 피격 시 빨간색으로 번쩍\n        const originalColor = enemy.children[0].material.color.getHex();\n        enemy.children[0].material.color.setHex(0xFF6666);\n        \n        setTimeout(() => {\n            if (enemy.children[0] && enemy.children[0].material) {\n                enemy.children[0].material.color.setHex(originalColor);\n            }\n        }, 200);\n        \n        // 경계 상태로 전환\n        data.alertLevel = 2;\n        \n        // 사망 처리\n        if (data.health <= 0) {\n            this.createDeathEffect(enemy);\n            return true; // 사망\n        }\n        \n        return false; // 생존\n    }\n    \n    /**\n     * 총알 충돌 검사 (ElectroGun에서 호출)\n     */\n    checkBulletCollision(bullet) {\n        const bulletPos = bullet.position;\n        \n        for (const enemy of this.enemies) {\n            const enemyPos = enemy.position;\n            const distance = bulletPos.distanceTo(enemyPos);\n            \n            // 적의 크기를 고려한 충돌 검사\n            const collisionRadius = Math.max(\n                enemy.userData.type === 'HEAVY' ? 0.8 : 0.5\n            );\n            \n            if (distance < collisionRadius) {\n                return { enemy, distance };\n            }\n        }\n        \n        return null;\n    }\n    \n    /**\n     * 공격 이펙트 생성\n     */\n    createAttackEffect(enemy) {\n        // 공격 시 잠깐 크기 증가\n        enemy.scale.setScalar(1.2);\n        setTimeout(() => {\n            if (enemy.scale) enemy.scale.setScalar(1.0);\n        }, 100);\n    }\n    \n    /**\n     * 사망 이펙트 생성\n     */\n    createDeathEffect(enemy) {\n        // 간단한 사망 애니메이션\n        enemy.rotation.z = Math.PI / 2; // 쓰러짐\n        enemy.position.y -= 0.3;\n        \n        // 색상 변경\n        enemy.children.forEach(child => {\n            if (child.material) {\n                child.material.color.setHex(0x444444);\n                child.material.transparent = true;\n                child.material.opacity = 0.5;\n            }\n        });\n    }\n    \n    /**\n     * 적 제거\n     */\n    removeEnemy(index) {\n        const enemy = this.enemies[index];\n        if (enemy) {\n            this.scene.remove(enemy);\n            this.enemies.splice(index, 1);\n            \n            // 점수 추가\n            if (this.gameManager.uiManager) {\n                this.gameManager.uiManager.recordEnemyKill();\n            }\n        }\n    }\n    \n    /**\n     * 살아있는 적들 반환\n     */\n    getAliveEnemies() {\n        return this.enemies.filter(enemy => enemy.userData.health > 0);\n    }\n    \n    /**\n     * 모든 적 제거 (게임 리셋 시)\n     */\n    clearAllEnemies() {\n        this.enemies.forEach(enemy => {\n            this.scene.remove(enemy);\n        });\n        this.enemies = [];\n        \n        if (this.enemyProjectiles) {\n            this.enemyProjectiles.forEach(projectile => {\n                this.scene.remove(projectile);\n            });\n            this.enemyProjectiles = [];\n        }\n    }\n    \n    /**\n     * 현재 상태 반환\n     */\n    getState() {\n        return {\n            enemyCount: this.enemies.length,\n            maxEnemies: this.maxEnemies,\n            globalAlertLevel: this.globalAlertLevel,\n            aliveEnemies: this.getAliveEnemies().length\n        };\n    }\n}
+                data.destination = new THREE.Vector3(
+                    this.playerLastKnownPosition.x + (Math.random() - 0.5) * searchRadius,
+                    this.playerLastKnownPosition.y,
+                    this.playerLastKnownPosition.z + (Math.random() - 0.5) * searchRadius
+                );
+            }
+        }
+    }
+    
+    /**
+     * 추적 행동
+     */
+    handleChase(enemy, playerPos) {
+        const data = enemy.userData;
+        
+        // 행동 타입별 차별화
+        switch (data.behavior) {
+            case 'aggressive':
+                data.destination = playerPos.clone();
+                break;
+                
+            case 'hit_and_run':
+                // 가까이 다가갔다가 도망
+                const distance = enemy.position.distanceTo(playerPos);
+                if (distance < 3) {
+                    const fleeDirection = enemy.position.clone().sub(playerPos).normalize();
+                    data.destination = enemy.position.clone().add(fleeDirection.multiplyScalar(5));
+                } else {
+                    data.destination = playerPos.clone();
+                }
+                break;
+                
+            case 'tank':
+                // 천천히 직진
+                data.destination = playerPos.clone();
+                break;
+                
+            case 'ranged':
+                // 일정 거리 유지
+                const optimalRange = data.attackRange * 0.8;
+                const currentDistance = enemy.position.distanceTo(playerPos);
+                
+                if (currentDistance < optimalRange) {
+                    // 너무 가깝면 후퇴
+                    const retreatDirection = enemy.position.clone().sub(playerPos).normalize();
+                    data.destination = enemy.position.clone().add(retreatDirection.multiplyScalar(2));
+                } else if (currentDistance > data.attackRange) {
+                    // 너무 멀면 접근
+                    data.destination = playerPos.clone();
+                } else {
+                    // 적정 거리면 정지
+                    data.destination = enemy.position.clone();
+                }
+                break;
+        }
+    }
+    
+    /**
+     * 공격 행동
+     */
+    handleAttack(enemy, deltaTime) {
+        const data = enemy.userData;
+        
+        if (data.attackCooldown <= 0 && data.target) {
+            // 공격 실행
+            this.performAttack(enemy);
+            
+            // 쿨다운 설정 (타입별 차별화)
+            switch (data.behavior) {
+                case 'aggressive':
+                    data.attackCooldown = 1.5;
+                    break;
+                case 'hit_and_run':
+                    data.attackCooldown = 0.8;
+                    break;
+                case 'tank':
+                    data.attackCooldown = 2.5;
+                    break;
+                case 'ranged':
+                    data.attackCooldown = 3.0;
+                    break;
+            }
+        }
+    }
+    
+    /**
+     * 실제 공격 수행
+     */
+    performAttack(enemy) {
+        const data = enemy.userData;
+        const target = data.target;
+        
+        if (!target) return;
+        
+        // 타입별 공격 방식
+        switch (data.behavior) {
+            case 'ranged':
+                this.createEnemyProjectile(enemy, target.position);
+                break;
+            default:
+                // 근접 공격
+                if (enemy.position.distanceTo(target.position) <= data.attackRange) {
+                    target.takeDamage(data.damage, enemy);
+                }
+                break;
+        }
+        
+        // 공격 이펙트
+        this.createAttackEffect(enemy);
+        
+        console.log(`${data.type}이(가) 공격! 데미지: ${data.damage}`);
+    }
+    
+    /**
+     * 적 투사체 생성 (원거리 공격용)
+     */
+    createEnemyProjectile(enemy, targetPos) {
+        const projectileGeometry = new THREE.SphereGeometry(0.1, 6, 6);
+        const projectileMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4444 });
+        const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+        
+        projectile.position.copy(enemy.position);
+        projectile.position.y += 0.5;
+        
+        const direction = targetPos.clone().sub(projectile.position).normalize();
+        
+        projectile.userData = {
+            velocity: direction.multiplyScalar(15),
+            damage: enemy.userData.damage,
+            life: 3.0,
+            owner: enemy
+        };
+        
+        this.scene.add(projectile);
+        
+        // 프로젝타일 업데이트를 위한 배열에 추가
+        if (!this.enemyProjectiles) this.enemyProjectiles = [];
+        this.enemyProjectiles.push(projectile);
+    }
+    
+    /**
+     * 적 이동 업데이트
+     */
+    updateEnemyMovement(enemy, deltaTime) {
+        const data = enemy.userData;
+        const destination = data.destination;
+        
+        if (!destination) return;
+        
+        const direction = destination.clone().sub(enemy.position);
+        direction.y = 0; // Y축 제거
+        
+        const distance = direction.length();
+        
+        if (distance > 0.1) {
+            direction.normalize();
+            
+            // 속도 조절
+            let moveSpeed = data.speed;
+            if (data.state === 'chase' && data.behavior === 'hit_and_run') {
+                moveSpeed *= 1.5; // 스카우트는 추적 시 빠름
+            }
+            
+            const moveDistance = moveSpeed * deltaTime;
+            const actualMove = Math.min(moveDistance, distance);
+            
+            const movement = direction.multiplyScalar(actualMove);
+            
+            // 충돌 검사
+            const newPosition = enemy.position.clone().add(movement);
+            if (!this.checkEnemyCollision(newPosition)) {
+                enemy.position.add(movement);
+                
+                // 이동 방향으로 회전
+                enemy.lookAt(enemy.position.clone().add(direction));
+            }
+        }
+    }
+    
+    /**
+     * 적 충돌 검사
+     */
+    checkEnemyCollision(position) {
+        // 간단한 경계 검사 (실제 구현에서는 미로와 충돌 검사)
+        if (position.x < 0 || position.x > 15 || position.z < 0 || position.z > 15) {
+            return true;
+        }
+        
+        // 미로와의 충돌 검사 (gameManager.maze 사용)
+        if (this.gameManager.maze && this.gameManager.maze.checkCollision) {
+            return this.gameManager.maze.checkCollision(position, 0.3);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 적 애니메이션 업데이트
+     */
+    updateEnemyAnimation(enemy, deltaTime) {
+        const data = enemy.userData;
+        const anim = data.walkAnimation;
+        
+        if (!anim) return;
+        
+        // 이동 중일 때 걷기 애니메이션
+        const isMoving = data.destination && enemy.position.distanceTo(data.destination) > 0.5;
+        
+        if (isMoving) {
+            anim.timer += deltaTime * 6.0;
+            
+            const swing = Math.sin(anim.timer) * 0.2;
+            
+            // 다리 애니메이션
+            if (anim.leftLeg && anim.rightLeg) {
+                anim.leftLeg.rotation.x = swing;
+                anim.rightLeg.rotation.x = -swing;
+            }
+            
+            // 팔 애니메이션 (반대로)
+            if (anim.leftArm && anim.rightArm) {
+                anim.leftArm.rotation.x = -swing * 0.5;
+                anim.rightArm.rotation.x = swing * 0.5;
+            }
+        } else {
+            // 정지 시 원래 위치로
+            if (anim.leftLeg) anim.leftLeg.rotation.x = 0;
+            if (anim.rightLeg) anim.rightLeg.rotation.x = 0;
+            if (anim.leftArm) anim.leftArm.rotation.x = 0;
+            if (anim.rightArm) anim.rightArm.rotation.x = 0;
+        }
+    }
+    
+    /**
+     * 적이 데미지를 받았을 때
+     */
+    damageEnemy(enemy, damage) {
+        const data = enemy.userData;
+        
+        data.health -= damage;
+        data.lastDamageTime = performance.now();
+        
+        // 피격 시 빨간색으로 번쩍
+        const originalColor = enemy.children[0].material.color.getHex();
+        enemy.children[0].material.color.setHex(0xFF6666);
+        
+        setTimeout(() => {
+            if (enemy.children[0] && enemy.children[0].material) {
+                enemy.children[0].material.color.setHex(originalColor);
+            }
+        }, 200);
+        
+        // 경계 상태로 전환
+        data.alertLevel = 2;
+        
+        // 사망 처리
+        if (data.health <= 0) {
+            this.createDeathEffect(enemy);
+            return true; // 사망
+        }
+        
+        return false; // 생존
+    }
+    
+    /**
+     * 총알 충돌 검사 (ElectroGun에서 호출)
+     */
+    checkBulletCollision(bullet) {
+        const bulletPos = bullet.position;
+        
+        for (const enemy of this.enemies) {
+            const enemyPos = enemy.position;
+            const distance = bulletPos.distanceTo(enemyPos);
+            
+            // 적의 크기를 고려한 충돌 검사
+            const collisionRadius = Math.max(
+                enemy.userData.type === 'HEAVY' ? 0.8 : 0.5
+            );
+            
+            if (distance < collisionRadius) {
+                return { enemy, distance };
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 공격 이펙트 생성
+     */
+    createAttackEffect(enemy) {
+        // 공격 시 잠깐 크기 증가
+        enemy.scale.setScalar(1.2);
+        setTimeout(() => {
+            if (enemy.scale) enemy.scale.setScalar(1.0);
+        }, 100);
+    }
+    
+    /**
+     * 사망 이펙트 생성
+     */
+    createDeathEffect(enemy) {
+        // 간단한 사망 애니메이션
+        enemy.rotation.z = Math.PI / 2; // 쓰러짐
+        enemy.position.y -= 0.3;
+        
+        // 색상 변경
+        enemy.children.forEach(child => {
+            if (child.material) {
+                child.material.color.setHex(0x444444);
+                child.material.transparent = true;
+                child.material.opacity = 0.5;
+            }
+        });
+    }
+    
+    /**
+     * 적 제거
+     */
+    removeEnemy(index) {
+        const enemy = this.enemies[index];
+        if (enemy) {
+            this.scene.remove(enemy);
+            this.enemies.splice(index, 1);
+            
+            // 점수 추가
+            if (this.gameManager.uiManager) {
+                this.gameManager.uiManager.recordEnemyKill();
+            }
+        }
+    }
+    
+    /**
+     * 살아있는 적들 반환
+     */
+    getAliveEnemies() {
+        return this.enemies.filter(enemy => enemy.userData.health > 0);
+    }
+    
+    /**
+     * 모든 적 제거 (게임 리셋 시)
+     */
+    clearAllEnemies() {
+        this.enemies.forEach(enemy => {
+            this.scene.remove(enemy);
+        });
+        this.enemies = [];
+        
+        if (this.enemyProjectiles) {
+            this.enemyProjectiles.forEach(projectile => {
+                this.scene.remove(projectile);
+            });
+            this.enemyProjectiles = [];
+        }
+    }
+    
+    /**
+     * 현재 상태 반환
+     */
+    getState() {
+        return {
+            enemyCount: this.enemies.length,
+            maxEnemies: this.maxEnemies,
+            globalAlertLevel: this.globalAlertLevel,
+            aliveEnemies: this.getAliveEnemies().length
+        };
+    }
+}
