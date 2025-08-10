@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게임 테스트</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #222;
+            color: white;
+        }
+        #output {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #gameContainer {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #555;
+        }
+        .hud, .crosshair, .damage-indicator, .pickup-notification {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>게임 초기화 테스트</h1>
+    <div id="output">로딩 중...</div>
+    
+    <!-- 필수 UI 요소들 -->
+    <div id="mainMenu" style="display: none;"></div>
+    <div id="gameOverScreen" style="display: none;"></div>
+    <div id="victoryScreen" style="display: none;"></div>
+    <div class="hud" id="hud">
+        <div id="coinCount">0</div>
+        <div id="score">0</div>
+        <div id="healthFill"></div>
+        <div id="healthText">100</div>
+        <div id="powerFill"></div>
+        <div id="powerLevel">1</div>
+        <div id="ammoCount">∞</div>
+        <div id="damageIndicator"></div>
+        <div id="pickupNotification"></div>
+        <div id="finalCoins">0</div>
+        <div id="finalScore">0</div>
+        <div id="enemiesKilled">0</div>
+        <div id="victoryCoins">0</div>
+        <div id="victoryScore">0</div>
+        <div id="completionTime">0</div>
+    </div>
+    <div class="crosshair"></div>
+    
+    <div id="gameContainer"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            console.log(message);
+            output.innerHTML += '<div>' + message + '</div>';
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        // 콘솔 로그 캐치
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            log('LOG: ' + args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            log('ERROR: ' + args.join(' '));
+        };
+        
+        window.addEventListener('error', function(e) {
+            log('WINDOW ERROR: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+        });
+
+        log('테스트 시작...');
+    </script>
+
+    <!-- Three.js 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        log('Three.js 로드됨: ' + (typeof THREE !== 'undefined'));
+    </script>
+    
+    <!-- 게임 스크립트들 로드 -->
+    <script src="js/PlayerController.js"></script>
+    <script src="js/ElectroGun.js"></script>
+    <script src="js/EnemyAI.js"></script>
+    <script src="js/ItemManager.js"></script>
+    <script src="js/UIManager.js"></script>
+    <script src="js/EffectsManager.js"></script>
+    <script src="js/GameManager.js"></script>
+    
+    <script>
+        // 클래스 로드 확인
+        const requiredClasses = [
+            'PlayerController',
+            'ElectroGun', 
+            'EnemyAI',
+            'ItemManager',
+            'UIManager',
+            'EffectsManager',
+            'GameManager'
+        ];
+        
+        requiredClasses.forEach(className => {
+            const isLoaded = typeof window[className] !== 'undefined';
+            log(`${className}: ${isLoaded ? 'OK' : 'FAIL'}`);
+        });
+        
+        // GameManager 생성 테스트
+        try {
+            log('GameManager 생성 시도...');
+            const gameManager = new GameManager();
+            log('GameManager 생성 성공!');
+            log('초기화 상태: ' + gameManager.isInitialized);
+        } catch (error) {
+            log('GameManager 생성 실패: ' + error.message);
+            log('Stack trace: ' + error.stack);
+        }
+    </script>
+    
+</body>
+</html>

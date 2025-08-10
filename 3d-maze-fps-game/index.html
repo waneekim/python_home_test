@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 미로 탐험 게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-ui">
+        <div class="hud">
+            <div class="score">점수: <span id="score">0</span></div>
+            <div class="power">전력: <span id="power">0</span></div>
+            <div class="health">체력: <span id="health">100</span></div>
+        </div>
+        
+        <div class="crosshair">+</div>
+        
+        <div id="instructions" class="instructions">
+            <h2>3D 미로 탐험</h2>
+            <p>🏃‍♀️ 6살 소녀가 되어 미로를 탐험해보세요!</p>
+            <div class="controls">
+                <p><strong>조작법:</strong></p>
+                <p>WASD 또는 방향키: 이동</p>
+                <p>마우스: 시점 회전 (클릭하면 포인터 락)</p>
+                <p>스페이스바: 점프</p>
+                <p>마우스 클릭: 전기 총 발사</p>
+            </div>
+            <div class="objectives">
+                <p><strong>목표:</strong></p>
+                <p>🪙 동전을 먹어서 점수를 모으세요!</p>
+                <p>⚡ 전기 큐브로 힘을 키우세요!</p>
+                <p>👹 악당을 전기 총으로 물리치세요!</p>
+            </div>
+            <button id="startBtn">게임 시작</button>
+        </div>
+        
+        <div id="gameOverScreen" class="game-over" style="display: none;">
+            <h2>게임 오버!</h2>
+            <p>최종 점수: <span id="finalScore">0</span></p>
+            <p>모은 동전: <span id="finalCoins">0</span>개</p>
+            <button id="restartBtn">다시 시작</button>
+        </div>
+    </div>
+
+    <div id="gameContainer"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

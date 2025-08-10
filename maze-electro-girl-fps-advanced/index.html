@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미로의 전기 총 소녀: 3D FPS 어드벤처</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 게임 UI 시스템 -->
+    <div class="game-ui">
+        <!-- HUD 시스템 -->
+        <div id="hud" class="hud">
+            <div class="score-section">
+                <div class="coin-counter">
+                    <span class="coin-icon">🪙</span>
+                    <span id="coinCount">0</span>
+                    <span class="label">코인</span>
+                </div>
+                <div class="score-display">
+                    <span class="label">점수:</span>
+                    <span id="score">0</span>
+                </div>
+            </div>
+            
+            <div class="health-section">
+                <div class="health-bar">
+                    <div class="health-fill" id="healthFill"></div>
+                    <span class="health-text" id="healthText">100</span>
+                </div>
+            </div>
+            
+            <div class="weapon-section">
+                <div class="electro-gun-hud">
+                    <div class="power-level">
+                        <span class="label">전기력:</span>
+                        <div class="power-bar">
+                            <div class="power-fill" id="powerFill"></div>
+                        </div>
+                        <span id="powerLevel">1</span>
+                    </div>
+                    <div class="ammo-counter">
+                        <span id="ammoCount">∞</span>
+                        <span class="label">전기 에너지</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 크로스헤어 -->
+        <div class="crosshair">
+            <div class="crosshair-center"></div>
+            <div class="crosshair-line crosshair-top"></div>
+            <div class="crosshair-line crosshair-bottom"></div>
+            <div class="crosshair-line crosshair-left"></div>
+            <div class="crosshair-line crosshair-right"></div>
+        </div>
+        
+        <!-- 데미지 인디케이터 -->
+        <div class="damage-indicator" id="damageIndicator"></div>
+        
+        <!-- 아이템 획득 알림 -->
+        <div class="pickup-notification" id="pickupNotification"></div>
+    </div>
+
+    <!-- 게임 메뉴 시스템 -->
+    <div id="mainMenu" class="menu-screen">
+        <div class="menu-container">
+            <h1 class="game-title">미로의 전기 총 소녀</h1>
+            <h2 class="game-subtitle">3D FPS 어드벤처</h2>
+            
+            <div class="character-info">
+                <div class="character-avatar">👧⚡</div>
+                <p class="character-desc">6살 소녀 전기 마법사가 되어 미로를 탐험하세요!</p>
+            </div>
+            
+            <div class="game-features">
+                <div class="feature">
+                    <span class="feature-icon">🎯</span>
+                    <span>1인칭 FPS 액션</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">⚡</span>
+                    <span>전기 총 업그레이드</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🪙</span>
+                    <span>코인 수집 어드벤처</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🏰</span>
+                    <span>복잡한 3D 미로</span>
+                </div>
+            </div>
+            
+            <div class="controls-info">
+                <h3>조작법</h3>
+                <div class="control-list">
+                    <div class="control-item">
+                        <span class="key">WASD / 방향키</span>
+                        <span class="action">이동</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">마우스</span>
+                        <span class="action">시점 회전</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">스페이스</span>
+                        <span class="action">점프</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">클릭</span>
+                        <span class="action">전기 총 발사</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="startBtn" class="menu-button primary">게임 시작</button>
+            <button id="tutorialBtn" class="menu-button secondary">튜토리얼</button>
+        </div>
+    </div>
+    
+    <!-- 게임 오버 화면 -->
+    <div id="gameOverScreen" class="menu-screen" style="display: none;">
+        <div class="menu-container">
+            <h1 class="game-over-title">게임 오버</h1>
+            <div class="final-stats">
+                <div class="stat">
+                    <span class="stat-label">수집한 코인:</span>
+                    <span id="finalCoins" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">최종 점수:</span>
+                    <span id="finalScore" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">처치한 적:</span>
+                    <span id="enemiesKilled" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="menu-buttons">
+                <button id="restartBtn" class="menu-button primary">다시 시작</button>
+                <button id="mainMenuBtn" class="menu-button secondary">메인 메뉴</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 승리 화면 -->
+    <div id="victoryScreen" class="menu-screen" style="display: none;">
+        <div class="menu-container">
+            <h1 class="victory-title">축하합니다! 🎉</h1>
+            <p class="victory-message">모든 코인을 수집하고 미로를 정복했습니다!</p>
+            <div class="final-stats">
+                <div class="stat">
+                    <span class="stat-label">수집한 코인:</span>
+                    <span id="victoryCoins" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">최종 점수:</span>
+                    <span id="victoryScore" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">완료 시간:</span>
+                    <span id="completionTime" class="stat-value">00:00</span>
+                </div>
+            </div>
+            <div class="menu-buttons">
+                <button id="playAgainBtn" class="menu-button primary">다시 플레이</button>
+                <button id="victoryMenuBtn" class="menu-button secondary">메인 메뉴</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D 렌더링 컨테이너 -->
+    <div id="gameContainer"></div>
+
+    <!-- 스크립트 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 시스템 스크립트들을 GameManager보다 먼저 로드 -->
+    <script src="js/PlayerController.js"></script>
+    <script src="js/ElectroGun.js"></script>
+    <script src="js/EnemyAI.js"></script>
+    <script src="js/ItemManager.js"></script>
+    <script src="js/UIManager.js"></script>
+    <script src="js/EffectsManager.js"></script>
+    <!-- GameManager는 모든 시스템이 로드된 후 -->
+    <script src="js/GameManager.js"></script>
+    <!-- main.js는 마지막 -->
+    <script src="js/main.js"></script>
+</body>
+</html>

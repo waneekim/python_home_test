@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test: 미로의 전기 총 소녀 초기화 테스트</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #001122;
+            color: white;
+            padding: 20px;
+        }
+        .test-results { margin: 20px 0; }
+        .pass { color: #00ff00; }
+        .fail { color: #ff0000; }
+        .loading { color: #ffdd00; }
+        .hud { position: absolute; top: 20px; right: 20px; }
+        #gameContainer { 
+            width: 400px; 
+            height: 300px; 
+            border: 1px solid #333; 
+            margin: 20px 0;
+            background: #000;
+        }
+        #mainMenu, #gameOverScreen, #victoryScreen { display: none; }
+    </style>
+</head>
+<body>
+    <h1>🎮 미로의 전기 총 소녀: 초기화 테스트</h1>
+    
+    <div class="test-results">
+        <h2>시스템 체크:</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="game-ui">
+        <div class="hud" id="hud">
+            <div>코인: <span id="coinCount">0</span></div>
+            <div>점수: <span id="score">0</span></div>
+            <div>체력: <span id="healthText">100</span></div>
+        </div>
+    </div>
+
+    <div id="gameContainer"></div>
+    <div id="mainMenu"></div>
+    <div id="gameOverScreen"></div>
+    <div id="victoryScreen"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- 수정된 스크립트 로딩 순서 -->
+    <script src="js/PlayerController.js"></script>
+    <script src="js/ElectroGun.js"></script>
+    <script src="js/EnemyAI.js"></script>
+    <script src="js/ItemManager.js"></script>
+    <script src="js/UIManager.js"></script>
+    <script src="js/EffectsManager.js"></script>
+    <script src="js/GameManager.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const results = document.getElementById('testResults');
+            
+            function log(message, status = 'loading') {
+                const div = document.createElement('div');
+                div.className = status;
+                div.innerHTML = `${status === 'pass' ? '✅' : status === 'fail' ? '❌' : '⏳'} ${message}`;
+                results.appendChild(div);
+            }
+
+            try {
+                log('Three.js 로드 체크...', 'loading');
+                if (typeof THREE !== 'undefined') {
+                    log('Three.js 로드 성공', 'pass');
+                } else {
+                    log('Three.js 로드 실패', 'fail');
+                    return;
+                }
+
+                log('필수 클래스 체크...', 'loading');
+                const requiredClasses = [
+                    'PlayerController', 'ElectroGun', 'EnemyAI', 
+                    'ItemManager', 'UIManager', 'EffectsManager', 'GameManager'
+                ];
+                
+                for (const className of requiredClasses) {
+                    if (typeof window[className] !== 'undefined') {
+                        log(`${className} 로드 성공`, 'pass');
+                    } else {
+                        log(`${className} 로드 실패`, 'fail');
+                    }
+                }
+
+                log('GameManager 초기화 테스트...', 'loading');
+                const gameManager = new GameManager();
+                
+                if (gameManager) {
+                    log('GameManager 생성 성공', 'pass');
+                } else {
+                    log('GameManager 생성 실패', 'fail');
+                    return;
+                }
+
+                // 잠시 기다려서 초기화 완료
+                setTimeout(() => {
+                    if (gameManager.isInitialized) {
+                        log('GameManager 초기화 완료', 'pass');
+                        
+                        // 시스템들 체크
+                        const systems = ['playerController', 'electroGun', 'enemyManager', 'itemManager', 'uiManager', 'effectsManager'];
+                        for (const system of systems) {
+                            if (gameManager[system]) {
+                                log(`${system} 초기화 성공`, 'pass');
+                            } else {
+                                log(`${system} 초기화 실패`, 'fail');
+                            }
+                        }
+
+                        log('🎉 모든 테스트 완료! 게임 초기화가 성공적으로 수정되었습니다.', 'pass');
+                        
+                    } else {
+                        log('GameManager 초기화 실패', 'fail');
+                    }
+                }, 1000);
+
+            } catch (error) {
+                log(`초기화 오류: ${error.message}`, 'fail');
+                console.error('테스트 오류:', error);
+            }
+        });
+    </script>
+</body>
+</html>

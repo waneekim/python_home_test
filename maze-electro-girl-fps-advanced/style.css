@@ -1,0 +1,543 @@
+/* ===== 글로벌 스타일 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0a0a0a;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+}
+
+#gameContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+}
+
+/* ===== 게임 UI 시스템 ===== */
+.game-ui {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* ===== HUD 시스템 ===== */
+.hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.score-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.coin-counter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 2px solid #FFD700;
+    padding: 8px 15px;
+    border-radius: 25px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 0 0 10px #FFD700;
+}
+
+.coin-icon {
+    font-size: 1.5rem;
+    animation: coinSpin 2s infinite linear;
+}
+
+.score-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 255, 255, 0.1);
+    border: 2px solid #00FFFF;
+    padding: 8px 15px;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #00FFFF;
+    text-shadow: 0 0 10px #00FFFF;
+}
+
+.health-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.health-bar {
+    position: relative;
+    width: 200px;
+    height: 20px;
+    background: rgba(255, 0, 0, 0.2);
+    border: 2px solid #FF0000;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.health-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #FF0000, #FF6B6B);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px #FF0000;
+}
+
+.health-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.weapon-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.electro-gun-hud {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.power-level {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(138, 43, 226, 0.1);
+    border: 2px solid #8A2BE2;
+    padding: 8px 15px;
+    border-radius: 25px;
+    color: #8A2BE2;
+    font-weight: bold;
+    text-shadow: 0 0 10px #8A2BE2;
+}
+
+.power-bar {
+    width: 80px;
+    height: 8px;
+    background: rgba(138, 43, 226, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.power-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8A2BE2, #DDA0DD);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 5px #8A2BE2;
+}
+
+.ammo-counter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 255, 0, 0.1);
+    border: 2px solid #00FF00;
+    padding: 8px 15px;
+    border-radius: 25px;
+    color: #00FF00;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00FF00;
+}
+
+.label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* ===== 크로스헤어 시스템 ===== */
+.crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+}
+
+.crosshair-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 3px;
+    background: #00FFFF;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00FFFF;
+}
+
+.crosshair-line {
+    position: absolute;
+    background: #00FFFF;
+    box-shadow: 0 0 5px #00FFFF;
+}
+
+.crosshair-top, .crosshair-bottom {
+    width: 2px;
+    height: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.crosshair-top { top: 0; }
+.crosshair-bottom { bottom: 0; }
+
+.crosshair-left, .crosshair-right {
+    width: 8px;
+    height: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.crosshair-left { left: 0; }
+.crosshair-right { right: 0; }
+
+/* ===== 데미지 인디케이터 ===== */
+.damage-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border: 5px solid transparent;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.damage-indicator.active {
+    border-color: rgba(255, 0, 0, 0.5);
+    opacity: 1;
+    animation: damageFlash 0.5s ease;
+}
+
+/* ===== 아이템 획득 알림 ===== */
+.pickup-notification {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 25px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #FFD700;
+    border-radius: 10px;
+    color: #FFD700;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.pickup-notification.show {
+    opacity: 1;
+    transform: translate(-50%, -60%);
+}
+
+/* ===== 메뉴 시스템 ===== */
+.menu-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    pointer-events: auto;
+}
+
+.menu-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    max-width: 600px;
+    width: 90%;
+    animation: menuAppear 0.5s ease;
+}
+
+.game-title {
+    font-size: 2.5rem;
+    color: #FFD700;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    animation: titleGlow 2s infinite alternate;
+}
+
+.game-subtitle {
+    font-size: 1.2rem;
+    color: #00FFFF;
+    margin-bottom: 30px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.character-info {
+    margin: 30px 0;
+}
+
+.character-avatar {
+    font-size: 4rem;
+    margin-bottom: 15px;
+    animation: characterBounce 2s infinite ease-in-out;
+}
+
+.character-desc {
+    color: #DDA0DD;
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.game-features {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 30px 0;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    color: white;
+}
+
+.feature-icon {
+    font-size: 1.5rem;
+}
+
+.controls-info {
+    margin: 30px 0;
+    text-align: left;
+}
+
+.controls-info h3 {
+    color: #00FFFF;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.control-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.control-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    color: white;
+}
+
+.key {
+    font-weight: bold;
+    color: #FFD700;
+}
+
+.menu-button {
+    background: linear-gradient(45deg, #FF6B6B, #FFD93D);
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 25px;
+    cursor: pointer;
+    margin: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.menu-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.menu-button.secondary {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.menu-button.secondary:hover {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* ===== 게임 오버/승리 화면 ===== */
+.game-over-title {
+    font-size: 2.5rem;
+    color: #FF6B6B;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.victory-title {
+    font-size: 2.5rem;
+    color: #FFD700;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    animation: victoryGlow 1s infinite alternate;
+}
+
+.victory-message {
+    font-size: 1.2rem;
+    color: #00FFFF;
+    margin-bottom: 30px;
+}
+
+.final-stats {
+    margin: 30px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    color: white;
+}
+
+.stat-label {
+    font-weight: bold;
+}
+
+.stat-value {
+    font-size: 1.2rem;
+    color: #FFD700;
+    font-weight: bold;
+}
+
+.menu-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* ===== 애니메이션 ===== */
+@keyframes coinSpin {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+}
+
+@keyframes damageFlash {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+@keyframes menuAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes titleGlow {
+    from { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); }
+    to { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 20px #FFD700; }
+}
+
+@keyframes characterBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes victoryGlow {
+    from { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); }
+    to { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 30px #FFD700; }
+}
+
+/* ===== 반응형 디자인 ===== */
+@media (max-width: 768px) {
+    .hud {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .health-section {
+        order: -1;
+    }
+    
+    .game-features {
+        grid-template-columns: 1fr;
+    }
+    
+    .control-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .menu-container {
+        padding: 20px;
+    }
+    
+    .game-title {
+        font-size: 2rem;
+    }
+    
+    .final-stats {
+        gap: 10px;
+    }
+    
+    .menu-buttons {
+        flex-direction: column;
+    }
+}
