@@ -1,6 +1,6 @@
 /**
  * PlayerController: 고급 1인칭 FPS 플레이어 컨트롤러
- * 
+ *
  * 핵심 기능:
  * - 부드러운 1인칭 시점 제어 (마우스 루킹)
  * - 물리 기반 이동 시스템 (관성, 마찰력)
@@ -9,6 +9,32 @@
  * - 피격 및 체력 관리
  * - 발소리 및 움직임 피드백
  */
+
+// Polyfill for THREE.CapsuleGeometry when using older versions of Three.js
+if (!THREE.CapsuleGeometry) {
+    console.warn('THREE.CapsuleGeometry is not available. Applying polyfill.');
+
+    THREE.CapsuleGeometry = function (radius = 1, length = 1, capSegments = 4, radialSegments = 8) {
+        const cylinder = new THREE.CylinderGeometry(radius, radius, length, radialSegments, 1, true);
+        const cap = new THREE.SphereGeometry(radius, radialSegments, capSegments, 0, Math.PI * 2, 0, Math.PI / 2);
+
+        const capTop = cap.clone();
+        capTop.translate(0, length / 2, 0);
+
+        const capBottom = cap.clone();
+        capBottom.rotateX(Math.PI);
+        capBottom.translate(0, -length / 2, 0);
+
+        const geometry = THREE.BufferGeometryUtils.mergeBufferGeometries(
+            [cylinder, capTop, capBottom],
+            false
+        );
+
+        geometry.computeVertexNormals();
+        return geometry;
+    };
+}
+
 class PlayerController {
     constructor(scene, camera, gameManager) {
         this.scene = scene;
