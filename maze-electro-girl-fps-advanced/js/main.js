@@ -125,18 +125,18 @@ class MazeElectroGirl3DGame {
         }
         
         // 필수 클래스들 체크
-        const requiredClasses = [
-            'GameManager',
-            'PlayerController', 
-            'ElectroGun',
-            'EnemyAI',
-            'ItemManager',
-            'UIManager',
-            'EffectsManager'
+        const classChecks = [
+            ['GameManager', typeof GameManager !== 'undefined'],
+            ['PlayerController', typeof PlayerController !== 'undefined'],
+            ['ElectroGun', typeof ElectroGun !== 'undefined'],
+            ['EnemyAI', typeof EnemyAI !== 'undefined'],
+            ['ItemManager', typeof ItemManager !== 'undefined'],
+            ['UIManager', typeof UIManager !== 'undefined'],
+            ['EffectsManager', typeof EffectsManager !== 'undefined'],
         ];
-        
-        for (const className of requiredClasses) {
-            if (typeof window[className] === 'undefined') {
+
+        for (const [className, isLoaded] of classChecks) {
+            if (!isLoaded) {
                 console.error(`필수 클래스가 로드되지 않았습니다: ${className}`);
                 return false;
             }
