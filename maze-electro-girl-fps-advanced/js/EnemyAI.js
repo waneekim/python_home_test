@@ -165,7 +165,9 @@ class EnemyAI {
         
         // 눈 (빨간 점)
         const eyeGeometry = new THREE.SphereGeometry(0.03, 4, 4);
-        const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, emissive: 0x440000 });
+        // MeshBasicMaterial does not support emissive properties.
+        // Use MeshPhongMaterial so the eyes can glow without throwing errors.
+        const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0xFF0000, emissive: 0x440000 });
         
         const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
         leftEye.position.set(-size.width * 0.15, size.height * 0.75, size.depth * 0.35);
