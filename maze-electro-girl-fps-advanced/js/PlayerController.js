@@ -265,18 +265,22 @@ class PlayerController {
         switch(event.code) {
             case 'KeyW':
             case 'ArrowUp':
+                event.preventDefault();
                 this.keys.forward = true;
                 break;
             case 'KeyS':
             case 'ArrowDown':
+                event.preventDefault();
                 this.keys.backward = true;
                 break;
             case 'KeyA':
             case 'ArrowLeft':
+                event.preventDefault();
                 this.keys.left = true;
                 break;
             case 'KeyD':
             case 'ArrowRight':
+                event.preventDefault();
                 this.keys.right = true;
                 break;
             case 'Space':
@@ -327,7 +331,11 @@ class PlayerController {
         
         // 포인터 락 요청
         if (!this.pointerLocked) {
-            document.body.requestPointerLock();
+            // 렌더러의 캔버스 요소가 있을 경우 해당 요소에 포인터 락을 요청한다.
+            // 일부 브라우저에서는 document.body에 직접 포인터 락을 요청하면
+            // movementX 값이 제대로 갱신되지 않는 문제가 발생할 수 있다.
+            const canvas = this.gameManager?.renderer?.domElement || document.body;
+            canvas.requestPointerLock();
         }
     }
     
@@ -352,7 +360,14 @@ class PlayerController {
      * 포인터 락 상태 변경
      */
     onPointerLockChange() {
-        this.pointerLocked = document.pointerLockElement === document.body;
+        const canvas = this.gameManager?.renderer?.domElement || document.body;
+        const wasLocked = this.pointerLocked;
+        this.pointerLocked = document.pointerLockElement === canvas;
+
+        if (this.pointerLocked && !wasLocked) {
+            this.mouseY = 0;
+            this.camera.rotation.x = 0;
+        }
     }
     
     /**
