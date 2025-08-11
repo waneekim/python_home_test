@@ -53,8 +53,9 @@ class MazeGame {
     
     setupScene() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x001122);
-        this.scene.fog = new THREE.Fog(0x001122, 10, 50);
+        // 밝은 낮 분위기의 하늘색 배경으로 설정
+        this.scene.background = new THREE.Color(0x87CEEB);
+        this.scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
         
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(1.5, 2, 1.5);
@@ -92,8 +93,9 @@ class MazeGame {
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
         
-        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
-        const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        // 주변을 더 잘 볼 수 있도록 밝은 색상으로 조정
+        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xb0b0b0 });
+        const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xe0e0e0 });
         const coinMaterial = new THREE.MeshPhongMaterial({ 
             color: 0xFFD700,
             emissive: 0x332200,
@@ -244,10 +246,11 @@ class MazeGame {
     }
     
     setupLights() {
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        // 더 밝은 환경을 위해 주변광과 방향광의 세기를 높임
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         this.scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight.position.set(5, 10, 5);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
