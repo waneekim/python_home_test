@@ -160,11 +160,12 @@ class MazeGame {
             position: new THREE.Vector3(1.5, 2, 1.5),
             rotation: new THREE.Euler(0, 0, 0)
         };
-        
-        this.camera.position.copy(this.player.position);
-        
-        // 플레이어 캐릭터 모델 생성 (그림자용 - 카메라 약간 뒤에 위치)
+
+        // 플레이어 캐릭터 모델 생성
         this.createPlayerModel();
+
+        // 초기 카메라 위치를 플레이어 뒤쪽으로 설정
+        this.updateCameraPosition();
     }
     
     createPlayerModel() {
@@ -240,8 +241,9 @@ class MazeGame {
         rightShoe.castShadow = true;
         this.playerModel.add(rightShoe);
         
-        // 플레이어 모델을 씬에 추가 (카메라 아래에 위치)
-        this.playerModel.position.set(1.5, 1.7, 1.5);
+        // 플레이어 모델을 씬에 추가하고 플레이어 위치에 맞춤
+        this.playerModel.position.copy(this.player.position);
+        this.playerModel.position.y -= 0.3;
         this.scene.add(this.playerModel);
     }
     
@@ -258,7 +260,7 @@ class MazeGame {
         this.scene.add(directionalLight);
         
         this.playerLight = new THREE.PointLight(0xffffff, 1, 10);
-        this.playerLight.position.copy(this.camera.position);
+        this.playerLight.position.copy(this.player.position);
         this.scene.add(this.playerLight);
     }
     
@@ -377,72 +379,77 @@ class MazeGame {
     restartGame() {
         location.reload();
     }
+
+    updateCameraPosition() {
+        const forward = new THREE.Vector3();
+        this.camera.getWorldDirection(forward);
+        const cameraPos = this.player.position.clone().add(forward.clone().multiplyScalar(-2));
+        cameraPos.y += 1;
+        this.camera.position.copy(cameraPos);
+    }
     
     updatePlayer() {
         if (!this.gameState.playing) return;
-        
+
         const moveSpeed = 0.1;
-        const direction = new THREE.Vector3();
         const right = new THREE.Vector3();
         const forward = new THREE.Vector3();
-        
+
         // 카메라의 현재 방향 벡터들 계산
         this.camera.getWorldDirection(forward);
         right.crossVectors(forward, this.camera.up).normalize();
-        
+
         // Y축 움직임 제거 (수평 이동만)
         forward.y = 0;
         forward.normalize();
-        
-        const newPosition = this.camera.position.clone();
-        
-        // FPS 스타일 이동 (카메라 방향 기준)
-        if (this.keys.up) {        // W 또는 ↑ - 앞으로
+
+        const newPosition = this.player.position.clone();
+
+        // 카메라 방향 기준 이동
+        if (this.keys.up) {
             newPosition.add(forward.clone().multiplyScalar(moveSpeed));
         }
-        if (this.keys.down) {      // S 또는 ↓ - 뒤로
+        if (this.keys.down) {
             newPosition.add(forward.clone().multiplyScalar(-moveSpeed));
         }
-        if (this.keys.left) {      // A 또는 ← - 왼쪽 스트레이프
+        if (this.keys.left) {
             newPosition.add(right.clone().multiplyScalar(-moveSpeed));
         }
-        if (this.keys.right) {     // D 또는 → - 오른쪽 스트레이프
+        if (this.keys.right) {
             newPosition.add(right.clone().multiplyScalar(moveSpeed));
         }
-        
+
         // 벽 충돌 검사
         if (!this.checkWallCollision(newPosition)) {
-            this.camera.position.copy(newPosition);
             this.player.position.copy(newPosition);
-            
-            // 플레이어 모델 위치 업데이트 (카메라 아래에 위치)
+
+            // 플레이어 모델 위치 업데이트
             if (this.playerModel) {
-                this.playerModel.position.copy(this.camera.position);
+                this.playerModel.position.copy(this.player.position);
                 this.playerModel.position.y -= 0.3; // 발이 바닥에 닿도록
-                // 카메라 Y축 회전을 플레이어 모델에 적용
                 this.playerModel.rotation.y = this.camera.rotation.y;
             }
         }
-        
+
         // 점프와 중력 처리
         if (this.isJumping) {
             this.playerVelocity.y -= 0.02; // 중력
-            this.camera.position.y += this.playerVelocity.y;
-            
-            if (this.camera.position.y <= 2) {
-                this.camera.position.y = 2;
+            this.player.position.y += this.playerVelocity.y;
+
+            if (this.player.position.y <= 2) {
+                this.player.position.y = 2;
                 this.isJumping = false;
                 this.playerVelocity.y = 0;
             }
-            
-            // 점프 시 플레이어 모델도 함께 업데이트
+
             if (this.playerModel) {
-                this.playerModel.position.y = this.camera.position.y - 0.3;
+                this.playerModel.position.y = this.player.position.y - 0.3;
             }
         }
-        
-        // 플레이어 조명 위치 업데이트
-        this.playerLight.position.copy(this.camera.position);
+
+        // 카메라와 조명 위치 업데이트
+        this.updateCameraPosition();
+        this.playerLight.position.copy(this.player.position);
     }
     
     jump() {
@@ -464,7 +471,7 @@ class MazeGame {
     }
     
     checkCollectibles() {
-        const playerPos = this.camera.position;
+        const playerPos = this.player.position;
         
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const coin = this.coins[i];
@@ -509,13 +516,14 @@ class MazeGame {
             emissive: 0x004444
         });
         const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-        
-        // 카메라 위치에서 시작
-        bullet.position.copy(this.camera.position);
-        
-        // 카메라가 바라보는 방향으로 총알 발사
+
+        // 플레이어 앞에서 시작
         const direction = new THREE.Vector3();
         this.camera.getWorldDirection(direction);
+        const startPos = this.player.position.clone();
+        startPos.y += 0.5;
+        startPos.add(direction.clone().multiplyScalar(0.5));
+        bullet.position.copy(startPos);
         
         bullet.userData = {
             velocity: direction.clone().normalize(),
@@ -575,7 +583,7 @@ class MazeGame {
     }
     
     updateEnemies() {
-        const playerPos = this.camera.position;
+        const playerPos = this.player.position;
         
         for (const enemy of this.enemies) {
             const direction = new THREE.Vector3();
